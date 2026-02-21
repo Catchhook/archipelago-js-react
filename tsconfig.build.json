@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {},
+    "paths": {
+      "@archipelago-js/client": ["../client/dist/index.d.ts"]
+    },
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,

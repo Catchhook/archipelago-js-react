@@ -1,11 +1,11 @@
-# @archipelago/react
+# @archipelago-js/react
 
 React bindings for Archipelago islands.
 
 ## Install
 
 ```bash
-yarn add @archipelago/react @archipelago/client react react-dom
+yarn add @archipelago-js/react @archipelago-js/client react react-dom
 ```
 
 ## API

@@ -1,4 +1,4 @@
-import { parseIslandResponse } from "@archipelago/client"
+import { parseIslandResponse } from "@archipelago-js/client"
 import { useEffect, useMemo, useRef } from "react"
 
 import { subscribeToIslandStream, type CableConsumer } from "./actionCable"

@@ -12,10 +12,10 @@ export declare function useIslandForm<TData extends Record<string, unknown>>({ i
     setData: <K extends keyof TData>(field: K, value: TData[K]) => void;
     errors: Record<string, string[]>;
     processing: boolean;
-    post: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago/client").IslandResponse | undefined>;
-    put: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago/client").IslandResponse | undefined>;
-    patch: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago/client").IslandResponse | undefined>;
-    delete: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago/client").IslandResponse | undefined>;
+    post: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago-js/client").IslandResponse | undefined>;
+    put: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago-js/client").IslandResponse | undefined>;
+    patch: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago-js/client").IslandResponse | undefined>;
+    delete: (operation: string, overrides?: SubmitOverrides) => Promise<import("@archipelago-js/client").IslandResponse | undefined>;
     reset: () => void;
 };
 export {};

@@ -7,7 +7,7 @@ import { changeInput, click, renderReact, waitForExpectation } from "./domHarnes
 const { islandFetchMock } = vi.hoisted(() => ({
     islandFetchMock: vi.fn()
 }));
-vi.mock("@archipelago/client", async () => {
+vi.mock("@archipelago-js/client", async () => {
     const actual = await vi.importActual("../../client/src/index");
     return {
         ...actual,

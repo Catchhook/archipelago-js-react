@@ -1,5 +1,5 @@
 {
-  "name": "@archipelago/react",
+  "name": "@archipelago-js/react",
   "version": "0.1.0",
   "description": "React bindings for Archipelago islands",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
-    "@archipelago/client": "^0.1.0",
+    "@archipelago-js/client": "^0.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -128,6 +128,50 @@ describe("bootArchipelagoIslands", () => {
     expect(matches).toHaveLength(2)
   })
 
+  it("mounts new islands on turbo:frame-load", async () => {
+    function TeamMembers() {
+      return <div>frame-load-mount</div>
+    }
+
+    document.body.innerHTML = `
+      <div data-island="true" data-component="TeamMembers" data-props='{}' data-params='{}'></div>
+    `
+
+    await boot({ TeamMembers })
+
+    const next = document.createElement("div")
+    next.setAttribute("data-island", "true")
+    next.setAttribute("data-component", "TeamMembers")
+    next.setAttribute("data-props", "{}")
+    next.setAttribute("data-params", "{}")
+    document.body.appendChild(next)
+
+    await act(async () => {
+      document.dispatchEvent(new Event("turbo:frame-load"))
+    })
+    await flush()
+
+    const matches = Array.from(document.body.querySelectorAll("[data-mounted='true']"))
+    expect(matches).toHaveLength(2)
+  })
+
+  it("skips islands with invalid JSON payload attributes", async () => {
+    function TeamMembers() {
+      return <div>valid-mounted</div>
+    }
+
+    document.body.innerHTML = `
+      <div data-island="true" data-component="TeamMembers" data-props='invalid-json' data-params='{}'></div>
+      <div data-island="true" data-component="TeamMembers" data-props='{}' data-params='{}'></div>
+    `
+
+    await boot({ TeamMembers })
+
+    const matches = Array.from(document.body.querySelectorAll("[data-mounted='true']"))
+    expect(matches).toHaveLength(1)
+    expect(document.body.textContent).toContain("valid-mounted")
+  })
+
   it("mounts islands added after initial boot without turbo:load", async () => {
     function TeamMembers() {
       return <div>observer-mount</div>

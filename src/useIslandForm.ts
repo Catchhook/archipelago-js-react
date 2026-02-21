@@ -1,4 +1,4 @@
-import { islandFetch } from "@archipelago/client"
+import { islandFetch } from "@archipelago-js/client"
 import { useCallback, useMemo, useRef, useState } from "react"
 
 import { useIslandContext } from "./context"
