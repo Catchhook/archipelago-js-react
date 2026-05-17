@@ -7,9 +7,6 @@ function deepClone(value) {
     }
     return JSON.parse(JSON.stringify(value));
 }
-function isFormDataLike(value) {
-    return typeof FormData !== "undefined" && value instanceof FormData;
-}
 export function useIslandForm({ initialData, clearFieldErrorsOnChange = true, fixedParams = {}, recentlySuccessfulDuration = 2000, transform, onSuccess, onError, onForbidden, onFinish }) {
     const { component, params, stream, setState } = useIslandContext();
     const [data, setDataState] = useState(initialData);
@@ -128,7 +125,12 @@ export function useIslandForm({ initialData, clearFieldErrorsOnChange = true, fi
                 },
                 overridePayload: overrides.payload,
                 navigate: overrides.navigate,
-                stream: stream ?? undefined
+                stream: stream ?? undefined,
+                onUploadProgress: (p) => {
+                    if (requestRef.current?.id === requestId && mountedRef.current) {
+                        setProgress(p);
+                    }
+                }
             });
             if (requestRef.current?.id !== requestId) {
                 return response;

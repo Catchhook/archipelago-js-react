@@ -132,4 +132,101 @@ describe("IslandForm", () => {
 
     await view.unmount()
   })
+
+  it("parses Rails-style bracket params into nested objects", async () => {
+    islandFetchMock.mockResolvedValue({ status: "ok", props: {}, version: 2 })
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <IslandForm operation="save" method="post">
+          <input name="user[email]" defaultValue="test@example.com" />
+          <input name="user[name]" defaultValue="Test User" />
+          <button type="submit" data-testid="submit">
+            Save
+          </button>
+        </IslandForm>
+      </IslandProvider>
+    )
+
+    const form = view.container.querySelector("form")!
+    await act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+    })
+
+    await waitForExpectation(() => {
+      expect(islandFetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    const callOptions = islandFetchMock.mock.calls[0][3]
+    expect(callOptions.overridePayload).toEqual({
+      user: { email: "test@example.com", name: "Test User" }
+    })
+
+    await view.unmount()
+  })
+
+  it("parses array bracket params (tags[])", async () => {
+    islandFetchMock.mockResolvedValue({ status: "ok", props: {}, version: 2 })
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <IslandForm operation="save" method="post">
+          <input name="tags[]" defaultValue="react" />
+          <input name="tags[]" defaultValue="rails" />
+          <button type="submit" data-testid="submit">
+            Save
+          </button>
+        </IslandForm>
+      </IslandProvider>
+    )
+
+    const form = view.container.querySelector("form")!
+    await act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+    })
+
+    await waitForExpectation(() => {
+      expect(islandFetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    const callOptions = islandFetchMock.mock.calls[0][3]
+    expect(callOptions.overridePayload).toEqual({
+      tags: ["react", "rails"]
+    })
+
+    await view.unmount()
+  })
+
+  it("handles mixed flat and nested params", async () => {
+    islandFetchMock.mockResolvedValue({ status: "ok", props: {}, version: 2 })
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <IslandForm operation="save" method="post">
+          <input name="title" defaultValue="My Post" />
+          <input name="author[name]" defaultValue="Alice" />
+          <button type="submit" data-testid="submit">
+            Save
+          </button>
+        </IslandForm>
+      </IslandProvider>
+    )
+
+    const form = view.container.querySelector("form")!
+    await act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+    })
+
+    await waitForExpectation(() => {
+      expect(islandFetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    const callOptions = islandFetchMock.mock.calls[0][3]
+    expect(callOptions.overridePayload).toEqual({
+      title: "My Post",
+      author: { name: "Alice" }
+    })
+
+    await view.unmount()
+  })
 })

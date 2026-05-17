@@ -1,4 +1,5 @@
-import { type IslandResponse } from "@archipelago-js/client";
+import { type IslandResponse, type UploadProgress } from "@archipelago-js/client";
+export type { UploadProgress } from "@archipelago-js/client";
 type SubmitOverrides = {
     payload?: Record<string, unknown>;
     navigate?: (location: string) => void;
@@ -16,9 +17,6 @@ export interface UseIslandFormOptions<TData extends Record<string, unknown>> ext
     recentlySuccessfulDuration?: number;
     transform?: (payload: TData) => Record<string, unknown>;
 }
-export type UploadProgress = {
-    percentage: number;
-};
 export declare function useIslandForm<TData extends Record<string, unknown>>({ initialData, clearFieldErrorsOnChange, fixedParams, recentlySuccessfulDuration, transform, onSuccess, onError, onForbidden, onFinish }: UseIslandFormOptions<TData>): {
     data: TData;
     setData: <K extends keyof TData>(field: K, value: TData[K]) => void;
@@ -38,4 +36,3 @@ export declare function useIslandForm<TData extends Record<string, unknown>>({ i
     patch: (operation: string, overrides?: SubmitOverrides) => Promise<IslandResponse | undefined>;
     delete: (operation: string, overrides?: SubmitOverrides) => Promise<IslandResponse | undefined>;
 };
-export {};

@@ -107,7 +107,7 @@ const form = useIslandForm({
 | `processing`           | `boolean`                               | True while request is in flight                  |
 | `wasSuccessful`        | `boolean`                               | True after an ok/redirect response               |
 | `recentlySuccessful`   | `boolean`                               | True for `recentlySuccessfulDuration` ms after success |
-| `progress`             | `{ percentage } \| null`                | Upload progress (future XHR support)             |
+| `progress`             | `UploadProgress \| null`                | Upload progress (`{ percentage, loaded, total }`) |
 | `transportError`       | `Error \| null`                         | Network/parse error (not a validation error)     |
 | `defaults(...)`        | Getter/setter for default values        | `defaults()` returns defaults; `defaults(next)` updates them |
 | `reset(...fields?)`    | `(...fields?) => void`                  | Reset all or specific fields to defaults         |
@@ -142,6 +142,19 @@ Render-prop children get access to the full form object:
     </>
   )}
 </IslandForm>
+```
+
+**Rails-style nested params** are supported. Input names with brackets are parsed into nested objects:
+
+```tsx
+<IslandForm operation="update_profile" method="patch">
+  <input name="user[email]" defaultValue={props.email} />
+  <input name="user[name]" defaultValue={props.name} />
+  <input name="tags[]" defaultValue="react" />
+  <input name="tags[]" defaultValue="rails" />
+  <button type="submit">Save</button>
+</IslandForm>
+// submits: { user: { email: "...", name: "..." }, tags: ["react", "rails"] }
 ```
 
 **Props:**

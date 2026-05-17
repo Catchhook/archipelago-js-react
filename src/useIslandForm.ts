@@ -1,7 +1,13 @@
-import { islandFetch, type IslandResponse } from "@archipelago-js/client"
+import {
+  islandFetch,
+  type IslandResponse,
+  type UploadProgress
+} from "@archipelago-js/client"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useIslandContext } from "./context"
+
+export type { UploadProgress } from "@archipelago-js/client"
 
 type FormMethod = "post" | "put" | "patch" | "delete"
 
@@ -26,19 +32,11 @@ export interface UseIslandFormOptions<TData extends Record<string, unknown>>
   transform?: (payload: TData) => Record<string, unknown>
 }
 
-export type UploadProgress = {
-  percentage: number
-}
-
 function deepClone<T>(value: T): T {
   if (typeof structuredClone === "function") {
     return structuredClone(value)
   }
   return JSON.parse(JSON.stringify(value))
-}
-
-function isFormDataLike(value: unknown): boolean {
-  return typeof FormData !== "undefined" && value instanceof FormData
 }
 
 export function useIslandForm<TData extends Record<string, unknown>>({
@@ -197,7 +195,12 @@ export function useIslandForm<TData extends Record<string, unknown>>({
           },
           overridePayload: overrides.payload,
           navigate: overrides.navigate,
-          stream: stream ?? undefined
+          stream: stream ?? undefined,
+          onUploadProgress: (p) => {
+            if (requestRef.current?.id === requestId && mountedRef.current) {
+              setProgress(p)
+            }
+          }
         })
 
         if (requestRef.current?.id !== requestId) {
