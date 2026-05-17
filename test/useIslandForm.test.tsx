@@ -70,9 +70,9 @@ describe("useIslandForm", () => {
     expect(islandFetchMock.mock.calls[0][0]).toBe("TeamMembers")
     expect(islandFetchMock.mock.calls[0][1]).toBe("add_member")
     expect(islandFetchMock.mock.calls[0][3].fixedParams).toEqual({
-      team_id: 1,
-      __stream: "TeamMembers:1"
+      team_id: 1
     })
+    expect(islandFetchMock.mock.calls[0][3].stream).toBe("TeamMembers:1")
 
     await waitForExpectation(() => {
       expect(view.getByTestId("members").textContent).toContain('"id":1')
@@ -389,26 +389,19 @@ describe("useIslandForm", () => {
     await view.unmount()
   })
 
-  it("rethrows non-abort errors from submit", async () => {
+  it("captures non-abort errors into transportError", async () => {
     islandFetchMock.mockRejectedValue(new Error("network-down"))
 
     function Probe() {
       const form = useIslandForm({ initialData: { email: "person@example.com" } })
-      const [caught, setCaught] = React.useState("")
 
       return (
         <>
-          <div data-testid="caught">{caught}</div>
+          <div data-testid="transport-error">{form.transportError?.message ?? ""}</div>
           <div data-testid="processing">{String(form.processing)}</div>
           <button
             data-testid="submit"
-            onClick={async () => {
-              try {
-                await form.post("add_member")
-              } catch (error) {
-                setCaught((error as Error).message)
-              }
-            }}
+            onClick={() => form.post("add_member")}
           >
             Submit
           </button>
@@ -425,8 +418,442 @@ describe("useIslandForm", () => {
     await click(view.getByTestId("submit"))
 
     await waitForExpectation(() => {
-      expect(view.getByTestId("caught").textContent).toBe("network-down")
+      expect(view.getByTestId("transport-error").textContent).toBe("network-down")
       expect(view.getByTestId("processing").textContent).toBe("false")
+    })
+
+    await view.unmount()
+  })
+
+  it("sets wasSuccessful and recentlySuccessful on ok response", async () => {
+    islandFetchMock.mockResolvedValue({ status: "ok", props: {}, version: 2 })
+
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "" },
+        recentlySuccessfulDuration: 50
+      })
+
+      return (
+        <>
+          <div data-testid="was-successful">{String(form.wasSuccessful)}</div>
+          <div data-testid="recently-successful">{String(form.recentlySuccessful)}</div>
+          <button data-testid="submit" onClick={() => form.post("save")}>
+            Submit
+          </button>
+        </>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    expect(view.getByTestId("was-successful").textContent).toBe("false")
+    expect(view.getByTestId("recently-successful").textContent).toBe("false")
+
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(view.getByTestId("was-successful").textContent).toBe("true")
+      expect(view.getByTestId("recently-successful").textContent).toBe("true")
+    })
+
+    await waitForExpectation(
+      () => {
+        expect(view.getByTestId("recently-successful").textContent).toBe("false")
+      },
+      { timeoutMs: 200 }
+    )
+    expect(view.getByTestId("was-successful").textContent).toBe("true")
+
+    await view.unmount()
+  })
+
+  it("sets wasSuccessful on redirect response", async () => {
+    islandFetchMock.mockResolvedValue({ status: "redirect", location: "/done" })
+
+    function Probe() {
+      const form = useIslandForm({ initialData: { email: "" } })
+
+      return (
+        <>
+          <div data-testid="was-successful">{String(form.wasSuccessful)}</div>
+          <button data-testid="submit" onClick={() => form.post("save")}>
+            Submit
+          </button>
+        </>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(view.getByTestId("was-successful").textContent).toBe("true")
+    })
+
+    await view.unmount()
+  })
+
+  it("clearErrors clears all errors", async () => {
+    islandFetchMock.mockResolvedValue({
+      status: "error",
+      errors: { email: ["invalid"], name: ["required"] }
+    })
+
+    function Probe() {
+      const form = useIslandForm({ initialData: { email: "", name: "" } })
+
+      return (
+        <>
+          <div data-testid="errors">{JSON.stringify(form.errors)}</div>
+          <button data-testid="submit" onClick={() => form.post("save")}>
+            Submit
+          </button>
+          <button data-testid="clear-all" onClick={() => form.clearErrors()}>
+            Clear All
+          </button>
+          <button data-testid="clear-email" onClick={() => form.clearErrors("email")}>
+            Clear Email
+          </button>
+        </>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("submit"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("errors").textContent).toContain("email")
+      expect(view.getByTestId("errors").textContent).toContain("name")
+    })
+
+    await click(view.getByTestId("clear-email"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("errors").textContent).not.toContain("email")
+      expect(view.getByTestId("errors").textContent).toContain("name")
+    })
+
+    await click(view.getByTestId("clear-all"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("errors").textContent).toBe("{}")
+    })
+
+    await view.unmount()
+  })
+
+  it("setError manually sets a field error", async () => {
+    function Probe() {
+      const form = useIslandForm({ initialData: { email: "" } })
+
+      return (
+        <>
+          <div data-testid="errors">{JSON.stringify(form.errors)}</div>
+          <button data-testid="set-error" onClick={() => form.setError("email", "already taken")}>
+            Set Error
+          </button>
+          <button
+            data-testid="set-errors"
+            onClick={() => form.setError("email", ["too short", "invalid"])}
+          >
+            Set Errors
+          </button>
+        </>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("set-error"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("errors").textContent).toContain("already taken")
+    })
+
+    await click(view.getByTestId("set-errors"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("errors").textContent).toContain("too short")
+      expect(view.getByTestId("errors").textContent).toContain("invalid")
+    })
+
+    await view.unmount()
+  })
+
+  it("resets specific fields to defaults", async () => {
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "original@example.com", name: "Original" }
+      })
+
+      return (
+        <>
+          <div data-testid="email">{form.data.email}</div>
+          <div data-testid="name">{form.data.name}</div>
+          <button
+            data-testid="change"
+            onClick={() => {
+              form.setData("email", "changed@example.com")
+              form.setData("name", "Changed")
+            }}
+          >
+            Change
+          </button>
+          <button data-testid="reset-email" onClick={() => form.reset("email")}>
+            Reset Email
+          </button>
+        </>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("change"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("email").textContent).toBe("changed@example.com")
+      expect(view.getByTestId("name").textContent).toBe("Changed")
+    })
+
+    await click(view.getByTestId("reset-email"))
+    await waitForExpectation(() => {
+      expect(view.getByTestId("email").textContent).toBe("original@example.com")
+      expect(view.getByTestId("name").textContent).toBe("Changed")
+    })
+
+    await view.unmount()
+  })
+
+  it("defaults getter returns current defaults", async () => {
+    function Probe() {
+      const form = useIslandForm({ initialData: { email: "a@b.c" } })
+      const defs = form.defaults()
+
+      return <div data-testid="defaults">{JSON.stringify(defs)}</div>
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    expect(view.getByTestId("defaults").textContent).toContain("a@b.c")
+    await view.unmount()
+  })
+
+  it("applies transform before submit", async () => {
+    islandFetchMock.mockResolvedValue({ status: "ok", props: {}, version: 2 })
+
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "UPPER@CASE.COM" },
+        transform: (data) => ({ ...data, email: data.email.toLowerCase() })
+      })
+
+      return (
+        <button data-testid="submit" onClick={() => form.post("save")}>
+          Submit
+        </button>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(islandFetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    expect(islandFetchMock.mock.calls[0][2]).toMatchObject({
+      email: "upper@case.com"
+    })
+
+    await view.unmount()
+  })
+
+  it("invokes onSuccess callback on ok response", async () => {
+    const onSuccess = vi.fn()
+    const onError = vi.fn()
+    const onFinish = vi.fn()
+
+    islandFetchMock.mockResolvedValue({ status: "ok", props: {}, version: 2 })
+
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "" },
+        onSuccess,
+        onError,
+        onFinish
+      })
+
+      return (
+        <button data-testid="submit" onClick={() => form.post("save")}>
+          Submit
+        </button>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(onSuccess).toHaveBeenCalledTimes(1)
+      expect(onSuccess.mock.calls[0][0].status).toBe("ok")
+      expect(onError).not.toHaveBeenCalled()
+      expect(onFinish).toHaveBeenCalledTimes(1)
+    })
+
+    await view.unmount()
+  })
+
+  it("invokes onError callback on error response", async () => {
+    const onSuccess = vi.fn()
+    const onError = vi.fn()
+
+    islandFetchMock.mockResolvedValue({
+      status: "error",
+      errors: { email: ["invalid"] }
+    })
+
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "" },
+        onSuccess,
+        onError
+      })
+
+      return (
+        <button data-testid="submit" onClick={() => form.post("save")}>
+          Submit
+        </button>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onError.mock.calls[0][0].status).toBe("error")
+      expect(onSuccess).not.toHaveBeenCalled()
+    })
+
+    await view.unmount()
+  })
+
+  it("invokes onForbidden callback on forbidden response", async () => {
+    const onForbidden = vi.fn()
+    islandFetchMock.mockResolvedValue({ status: "forbidden" })
+
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "" },
+        onForbidden
+      })
+
+      return (
+        <button data-testid="submit" onClick={() => form.post("save")}>
+          Submit
+        </button>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(onForbidden).toHaveBeenCalledTimes(1)
+      expect(onForbidden.mock.calls[0][0].status).toBe("forbidden")
+    })
+
+    await view.unmount()
+  })
+
+  it("resetAndClearErrors resets data and clears errors together", async () => {
+    islandFetchMock.mockResolvedValue({
+      status: "error",
+      errors: { email: ["invalid"] }
+    })
+
+    function Probe() {
+      const form = useIslandForm({
+        initialData: { email: "original@example.com" }
+      })
+
+      return (
+        <>
+          <div data-testid="email">{form.data.email}</div>
+          <div data-testid="errors">{JSON.stringify(form.errors)}</div>
+          <button data-testid="change" onClick={() => form.setData("email", "changed@example.com")}>
+            Change
+          </button>
+          <button data-testid="submit" onClick={() => form.post("save")}>
+            Submit
+          </button>
+          <button data-testid="reset-clear" onClick={() => form.resetAndClearErrors()}>
+            Reset and Clear
+          </button>
+        </>
+      )
+    }
+
+    const view = await renderReact(
+      <IslandProvider component="TeamMembers" params={{ team_id: 1 }}>
+        <Probe />
+      </IslandProvider>
+    )
+
+    await click(view.getByTestId("change"))
+    await click(view.getByTestId("submit"))
+
+    await waitForExpectation(() => {
+      expect(view.getByTestId("errors").textContent).toContain("email")
+      expect(view.getByTestId("email").textContent).toBe("changed@example.com")
+    })
+
+    await click(view.getByTestId("reset-clear"))
+
+    await waitForExpectation(() => {
+      expect(view.getByTestId("email").textContent).toBe("original@example.com")
+      expect(view.getByTestId("errors").textContent).toBe("{}")
     })
 
     await view.unmount()
