@@ -1,6 +1,6 @@
 # @archipelago-js/react
 
-React bindings for [Archipelago](https://github.com/robrace/archipelago) islands — server-rendered micro-frontends powered by Rails and React.
+React bindings for [Archipelago](https://github.com/Catchhook/archipelago-rails) islands — server-rendered micro-frontends powered by Rails and React.
 
 ## Install
 
